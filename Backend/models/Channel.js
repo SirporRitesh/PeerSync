@@ -1,50 +1,14 @@
-// routes/channel.js
-const express = require("express");
-const router = express.Router();
-const Workspace = require("../models/WorkSpace");
-const Channel = require("../models/Channel");
-const { verifyToken } = require("../middlewares/authMiddleware");
+// models/Channel.js
+import mongoose from 'mongoose';
 
-// Create a Channel
-router.post("/", verifyToken, async (req, res) => {
-  try {
-    const { workspaceId, name } = req.body;
+const channelSchema = new mongoose.Schema({
+  name: { type: String, required: true },
+  workspace: { type: mongoose.Schema.Types.ObjectId, ref: 'Workspace', required: true },
+  members: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
+  messages: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Message' }], // Added messages field (was missing in your schema but present in routes/message.js)
+}, { timestamps: true });
 
-    // Validate inputs
-    if (!workspaceId || !name) {
-      return res.status(400).json({ message: "Workspace ID and Channel name are required" });
-    }
+// Prevent model redefinition
+const Channel = mongoose.models.Channel || mongoose.model('Channel', channelSchema);
 
-    // Check if workspace exists and user is part of it
-    const workspace = await Workspace.findById(workspaceId);
-    if (!workspace) {
-      return res.status(404).json({ message: "Workspace not found" });
-    }
-    if (!workspace.members.includes(req.user.id)) {
-      return res.status(403).json({ message: "You are not a member of this workspace" });
-    }
-
-    // Create channel
-    const newChannel = new Channel({
-      name,
-      workspace: workspaceId,
-      members: [req.user.id], // Add the user as the first member
-    });
-
-    // Save the channel
-    const savedChannel = await newChannel.save();
-
-    // Add channel to workspace
-    workspace.channels.push(savedChannel._id);
-    await workspace.save();
-
-    res.status(201).json({
-      message: "Channel created successfully",
-      channel: savedChannel,
-    });
-  } catch (err) {
-    res.status(500).json({ message: "Server error", error: err.message });
-  }
-});
-
-module.exports = router;
+export default Channel;

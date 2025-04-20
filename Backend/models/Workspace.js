@@ -1,4 +1,5 @@
-const mongoose = require('mongoose');
+// models/Workspace.js
+import mongoose from 'mongoose';
 
 const workspaceSchema = new mongoose.Schema({
   name: { type: String, required: true },
@@ -11,6 +12,8 @@ const workspaceSchema = new mongoose.Schema({
       role: { type: String, enum: ['Admin', 'Member'], default: 'Member' },
     },
   ],
+  channels: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Channel' }],
 }, { timestamps: true });
 
-module.exports = mongoose.model('Workspace', workspaceSchema);
+const Workspace = mongoose.model('Workspace', workspaceSchema);
+export default Workspace;

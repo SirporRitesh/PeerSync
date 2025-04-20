@@ -1,30 +1,29 @@
-const express = require('express');
+import express from 'express';
+import User from '../models/User.js'; // Use ESM import
+
 const router = express.Router();
-const User = require('../models/User');  // Import the User model
 
-// Signup route
+// Define your routes here
 router.post('/signup', async (req, res) => {
-  const { email, password } = req.body;
   try {
-    // Call the signup method from User.js
+    const { email, password } = req.body;
     const result = await User.signup(email, password);
-    res.status(201).json(result);  // Send the result (success message + token)
+    res.status(201).json(result);
   } catch (err) {
-    console.error('Signup error:', err);
-    res.status(500).json({ message: err.message });  // Send error if any occurs
+    console.error('Signup error:', err.message);
+    res.status(400).json({ message: err.message });
   }
 });
 
-// Login route
 router.post('/login', async (req, res) => {
-  const { email, password } = req.body;
   try {
+    const { email, password } = req.body;
     const result = await User.login(email, password);
-    res.json(result);
+    res.status(200).json(result);
   } catch (err) {
-    console.error('Login error:', err);
-    res.status(500).json({ message: err.message });
+    console.error('Login error:', err.message);
+    res.status(400).json({ message: err.message });
   }
 });
 
-module.exports = router;
+export default router;

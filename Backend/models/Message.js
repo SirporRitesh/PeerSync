@@ -1,5 +1,5 @@
 // models/Message.js
-const mongoose = require("mongoose");
+import mongoose from 'mongoose';
 
 const messageSchema = new mongoose.Schema(
   {
@@ -9,12 +9,12 @@ const messageSchema = new mongoose.Schema(
     },
     sender: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: "User", // Reference to the User model
+      ref: "User",
       required: true,
     },
     channel: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: "Channel", // Reference to the Channel model
+      ref: "Channel",
       required: true,
     },
     timestamp: {
@@ -25,4 +25,5 @@ const messageSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-module.exports = mongoose.model("Message", messageSchema);
+const Message = mongoose.models.Message || mongoose.model("Message", messageSchema);
+export default Message;

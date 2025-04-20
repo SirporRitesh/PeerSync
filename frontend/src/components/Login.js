@@ -12,10 +12,13 @@ const Login = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
-      console.log("Login attempt:", { email, password }); // Log email and password
-      const response = await axios.post("/api/auth/login", { email, password }); // Corrected single call
+      const response = await axios.post("/api/auth/login", { email, password });
       localStorage.setItem("token", response.data.token);
-      navigate("/workspace");
+
+      // Redirect to the previous page or workspace
+      const redirectTo = localStorage.getItem("redirectTo") || "/workspace";
+      localStorage.removeItem("redirectTo");
+      navigate(redirectTo);
     } catch (err) {
       console.error("Login Error:", err);
       setError(err.response?.data?.message || "Invalid credentials or something went wrong.");

@@ -1,6 +1,6 @@
-const mongoose = require('mongoose');
-const bcrypt = require('bcryptjs');
-const jwt = require('jsonwebtoken');
+import mongoose from 'mongoose';
+import bcrypt from 'bcryptjs';
+import jwt from 'jsonwebtoken';
 
 // User schema
 const userSchema = new mongoose.Schema({
@@ -47,7 +47,7 @@ userSchema.statics.login = async function (email, password) {
   return { message: 'Login successful', token };
 };
 
-// Model for User
-const User = mongoose.model('User', userSchema);
+// Avoid recompilation error in dev
+const User = mongoose.models.User || mongoose.model('User', userSchema);
 
-module.exports = User;
+export default User;

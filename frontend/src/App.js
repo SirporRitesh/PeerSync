@@ -1,21 +1,28 @@
 import React from "react";
-import { BrowserRouter as Router, Route, Routes, Navigate } from "react-router-dom";
+import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
 import Login from "./components/Login";
 import Signup from "./components/Signup";
 import Workspace from "./components/Workspace";
+import ProtectedRoute from "./utils/ProtectedRoute";
 
 const App = () => {
   return (
     <Router>
-      <div className="app">
-        <h1>PeerSync</h1>
-        <Routes>
-          <Route path="/" element={<Navigate to="/login" />} />
-          <Route path="/login" element={<Login />} />
-          <Route path="/signup" element={<Signup />} />
-          <Route path="/workspace" element={<Workspace />} />
-        </Routes>
-      </div>
+      <Routes>
+        <Route path="/" element={<Navigate to="/login" />} />
+        <Route path="/login" element={<Login />} />
+        <Route path="/signup" element={<Signup />} />
+        <Route
+          path="/workspace"
+          element={
+            <ProtectedRoute>
+              <Workspace />
+            </ProtectedRoute>
+          }
+        />
+        {/* Catch-all route for undefined paths */}
+        <Route path="*" element={<div>404 - Page Not Found</div>} />
+      </Routes>
     </Router>
   );
 };
