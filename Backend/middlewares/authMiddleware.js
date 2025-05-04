@@ -12,8 +12,21 @@ export const verifyToken = async (req, res, next) => {
       return res.status(401).json({ message: 'Authorization token required' });
     }
 
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    console.log('Decoded Token:', decoded);
+    let decoded; // Declare the variable
+    try {
+      decoded = jwt.verify(token, process.env.JWT_SECRET, {
+        clockTolerance: 10, // Allow a 10-second skew
+      });
+      console.log('Decoded Token:', decoded);
+      console.log('Token Expiration Time:', new Date(decoded.exp * 1000)); // Log expiration time
+    } catch (err) {
+      if (err.name === 'TokenExpiredError') {
+        console.error('Token has expired:', err.message);
+        return res.status(403).json({ message: 'Token has expired' });
+      }
+      console.error('JWT Verification Error:', err.message);
+      return res.status(403).json({ message: 'Invalid or expired token' });
+    }
 
     const user = await User.findById(decoded.userId);
     if (!user) {

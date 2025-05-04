@@ -1,8 +1,9 @@
+// components/Login.js
 import React, { useState } from "react";
 import axios from "axios";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 
-const Signup = () => {
+const Login = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -12,19 +13,23 @@ const Signup = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
-      const normalizedEmail = email.toLowerCase(); // Normalize email to lowercase
-      // No need for bcrypt hashing here, the backend will handle it
-      const response = await axios.post("http://localhost:5000/api/auth/signup", { email: normalizedEmail, password }); // Send plain text password
-      localStorage.setItem("token", response.data.token);
-      navigate("/workspace");
+      const sanitizedEmail = email.trim().toLowerCase(); // Trim and normalize email
+      const response = await axios.post("http://localhost:5000/api/auth/login", { email: sanitizedEmail, password });
+      localStorage.setItem("token", response.data.token); // Store the token in localStorage
+
+      // Redirect to the workspace page
+      const redirectTo = localStorage.getItem("redirectTo") || "/workspace";
+      localStorage.removeItem("redirectTo");
+      navigate(redirectTo);
     } catch (err) {
-      setError(err.response?.data?.message || "Something went wrong. Please try again.");
+      console.error("Login Error:", err);
+      setError(err.response?.data?.message || "Invalid credentials or something went wrong.");
     }
   };
 
   return (
-    <div className="signup-form">
-      <h2>Signup</h2>
+    <div className="login-form">
+      <h2>Login</h2>
       {error && <p className="error">{error}</p>}
       <form onSubmit={handleSubmit}>
         <input
@@ -50,10 +55,13 @@ const Signup = () => {
             {showPassword ? "👁‍🗨" : "👁️"}
           </button>
         </div>
-        <button type="submit">Signup</button>
+        <button type="submit">Login</button>
       </form>
+      <p>
+        Don't have an account? <Link to="/signup">Signup</Link>
+      </p>
     </div>
   );
 };
 
-export default Signup;
+export default Login;

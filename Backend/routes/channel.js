@@ -7,7 +7,22 @@ import { verifyToken } from '../middlewares/authMiddleware.js';
 
 const router = express.Router();
 
-// Create a Channel
+// GET /api/channels/:id - Get channel details by ID
+router.get('/:id', verifyToken, async (req, res) => {
+  try {
+    console.log(`Fetching channel with ID: ${req.params.id}`); // Log channel ID
+    const channel = await Channel.findById(req.params.id).populate('members', 'email');
+    if (!channel) {
+      return res.status(404).json({ message: 'Channel not found' });
+    }
+    res.status(200).json(channel);
+  } catch (err) {
+    console.error('Error fetching channel:', err.message);
+    res.status(500).json({ message: 'Server error', error: err.message });
+  }
+});
+
+// Create a Channel (POST route)
 router.post('/', verifyToken, async (req, res) => {
   try {
     const { workspaceId, name } = req.body;

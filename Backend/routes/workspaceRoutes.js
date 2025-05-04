@@ -12,13 +12,15 @@ const generateInviteCode = () => {
   return Math.random().toString(36).substring(2, 10).toUpperCase();
 };
 
-// Base route
+// Fetch all workspaces for the authenticated user
 router.get('/', authenticateUser, async (req, res) => {
   try {
-    const workspaces = await Workspace.find({ 'members.userId': req.user._id });
-    res.status(200).json(workspaces); // Ensure this is an array
+    const workspaces = await Workspace.find({ 'members.userId': req.user._id })
+      .populate('channels')
+      .populate('members.userId', 'email');
+    res.status(200).json(workspaces); // Returns an array of workspaces
   } catch (err) {
-    console.error('Error fetching workspace data:', err);
+    console.error('Error fetching workspaces:', err);
     res.status(500).json({ message: 'Server error' });
   }
 });
@@ -46,7 +48,7 @@ router.post('/', authenticateUser, async (req, res) => {
     });
 
     const savedWorkspace = await workspace.save();
-    console.log('Workspace created:', savedWorkspace); // Added logging
+    console.log('Workspace created:', savedWorkspace);
     res.status(201).json({ message: 'Workspace created', workspace: savedWorkspace });
   } catch (err) {
     console.error('Error creating workspace:', err);
@@ -56,15 +58,17 @@ router.post('/', authenticateUser, async (req, res) => {
 
 // Fetch workspace details
 router.get('/:id', authenticateUser, async (req, res) => {
+  if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
+    return res.status(400).json({ message: 'Invalid workspace ID' });
+  }
   try {
+
+    console.log('Fetching workspace with ID:', req.params.id); // Log workspace ID
     const workspace = await Workspace.findById(req.params.id)
       .populate('channels')
       .populate('members.userId', 'email');
     if (!workspace) {
       return res.status(404).json({ message: 'Workspace not found' });
-    }
-    if (!workspace.members.some(member => member.userId._id.toString() === req.user._id.toString())) {
-      return res.status(403).json({ message: 'You are not a member of this workspace' });
     }
     res.status(200).json(workspace);
   } catch (err) {
@@ -76,7 +80,7 @@ router.get('/:id', authenticateUser, async (req, res) => {
 // Get channels
 router.get('/:id/channels', authenticateUser, async (req, res) => {
   try {
-    const workspace = await Workspace.findById(req.params.id).populate('channels');
+    const workspace = await Workspace.findOne({ _id: req.params.id }).populate('channels');
     if (!workspace) {
       return res.status(404).json({ message: 'Workspace not found' });
     }
@@ -95,11 +99,11 @@ router.post('/invite', authenticateUser, async (req, res) => {
   const { workspaceId, inviteCode } = req.body;
 
   try {
-    console.log('Invite request:', { workspaceId, inviteCode }); // Added logging
+    console.log('Invite request:', { workspaceId, inviteCode });
     const userId = req.user._id;
-    console.log('Authenticated user ID:', userId); // Added logging
+    console.log('Authenticated user ID:', userId);
     const workspace = await Workspace.findOne({ _id: workspaceId, inviteCode });
-    console.log('Workspace found:', workspace); // Added logging
+    console.log('Workspace found:', workspace);
 
     if (!workspace) {
       return res.status(400).json({ message: 'Invalid invite code or workspace not found' });

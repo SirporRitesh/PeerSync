@@ -30,24 +30,29 @@ userSchema.statics.signup = async function (email, password) {
 
 // Static method for login
 userSchema.statics.login = async function (email, password) {
-  const user = await this.findOne({ email });
+  // Normalize email to lowercase and trim whitespace
+  const sanitizedEmail = email.trim().toLowerCase();
+
+  // Find the user by email
+  const user = await this.findOne({ email: sanitizedEmail });
   if (!user) {
-    throw new Error('Invalid credentials');
+    throw new Error('Invalid credentials'); // Throw error if user not found
   }
 
+  // Validate the password
   const isMatch = await bcrypt.compare(password, user.password);
   if (!isMatch) {
-    throw new Error('Invalid credentials');
+    throw new Error('Invalid credentials'); // Throw error if password is incorrect
   }
 
+  // Generate a unique JWT token using the user's _id
   const token = jwt.sign({ userId: user._id }, process.env.JWT_SECRET, {
     expiresIn: '1h',
   });
 
-  return { message: 'Login successful', token };
+  return { message: 'Login successful', token }; // Return success message and token
 };
 
-// Avoid recompilation error in dev
-const User = mongoose.models.User || mongoose.model('User', userSchema);
+const User = mongoose.model('User', userSchema, 'users');
 
 export default User;

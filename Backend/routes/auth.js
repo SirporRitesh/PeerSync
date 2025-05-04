@@ -17,12 +17,16 @@ router.post('/signup', async (req, res) => {
 
 router.post('/login', async (req, res) => {
   try {
-    const { email, password } = req.body;
+    const { email, password } = req.body; // Read email and password from req.body
+
+    // Use the User model's login method to authenticate the user
     const result = await User.login(email, password);
+
+    // Return the result (message and token)
     res.status(200).json(result);
   } catch (err) {
     console.error('Login error:', err.message);
-    res.status(400).json({ message: err.message });
+    res.status(400).json({ message: err.message }); // Handle errors
   }
 });
 

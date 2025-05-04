@@ -1,6 +1,7 @@
 // frontend/src/components/dashboard/ChatBox.jsx
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import io from 'socket.io-client';
+import axios from 'axios';
 import MessageList from '../MessageList';
 import MessageInput from '../MessageInput';
 
@@ -8,64 +9,76 @@ const socket = io('http://localhost:5000');
 
 const ChatBox = ({ channel, workspaceId }) => {
   const [messages, setMessages] = useState([]);
+  const messagesEndRef = useRef(null);
+
+  // Scroll to bottom when messages update
+  const scrollToBottom = () => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  };
 
   useEffect(() => {
-    // Join the channel room
-    socket.emit('joinChannel', channel._id);
-
-    // Fetch initial messages
     const fetchMessages = async () => {
       try {
-        const response = await fetch(`http://localhost:5000/api/messages/${channel._id}`, {
-          headers: {
-            Authorization: `Bearer ${localStorage.getItem('token')}`,
-          },
-        });
-        const data = await response.json();
-        if (response.ok) {
-          setMessages(data);
-        } else {
-          console.error('Error fetching messages:', data.message);
-        }
+        const token = localStorage.getItem('token');
+        const response = await axios.get(
+          `http://localhost:5000/api/channels/${channel._id}/messages`,
+          {
+            headers: { Authorization: `Bearer ${token}` },
+          }
+        );
+        setMessages(response.data);
+        console.log('Updated messages state:', response.data);
+        scrollToBottom();
       } catch (err) {
         console.error('Error fetching messages:', err);
       }
     };
 
-    fetchMessages();
+    if (channel._id) {
+      fetchMessages();
+      socket.emit('joinChannel', channel._id);
+    }
+  }, [channel._id]);
 
-    // Listen for new messages
+  useEffect(() => {
     socket.on('message', (newMessage) => {
-      setMessages((prevMessages) => [...prevMessages, newMessage]);
+      console.log('Received message via Socket.IO:', newMessage);
+      setMessages((prevMessages) => {
+        const messageExists = prevMessages.some((msg) => msg._id === newMessage._id);
+        if (messageExists) return prevMessages;
+        return [...prevMessages, newMessage];
+      });
+      scrollToBottom();
     });
 
-    // Cleanup on unmount
     return () => {
       socket.off('message');
     };
   }, [channel._id]);
 
-  const handleSendMessage = (content) => {
-    const message = {
-      channel: channel._id,
-      content,
-      sender: localStorage.getItem('userId'), // Assume userId is stored after login
-      timestamp: new Date().toISOString(),
-    };
-    socket.emit('sendMessage', message); // Broadcast the message
+  const handleSendMessage = async (message) => {
+    console.log('Sending message:', message);
+    try {
+      const token = localStorage.getItem('token');
+      const response = await axios.post(
+        'http://localhost:5000/api/messages',
+        { channelId: channel._id, content: message },
+        {
+          headers: { Authorization: `Bearer ${token}` },
+        }
+      );
+      console.log('Message sent successfully:', response.data.message);
+    } catch (err) {
+      console.error('Error sending message:', err);
+    }
   };
 
   return (
-    <div className="flex flex-col flex-1 p-4 bg-gray-800">
-      {/* Channel Name */}
-      <div className="p-4 border-b border-gray-700">
-        <h2 className="text-xl font-semibold text-white">#{channel.name}</h2>
+    <div className="flex flex-col h-full">
+      <div className="flex-1 overflow-y-auto">
+        <MessageList messages={messages} />
+        <div ref={messagesEndRef} />
       </div>
-
-      {/* Message List */}
-      <MessageList messages={messages} />
-
-      {/* Message Input */}
       <MessageInput channelId={channel._id} onSendMessage={handleSendMessage} />
     </div>
   );

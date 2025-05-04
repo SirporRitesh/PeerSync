@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Socket.IO Test</title>
+  <script src="https://cdn.jsdelivr.net/npm/socket.io-client@4.7.5/dist/socket.io.min.js"></script>
+</head>
+<body>
+  <h1>Socket.IO Test</h1>
+  <p>Open the browser console to see logs.</p>
+  <script>
+    const socket = io('http://localhost:5000');
+    socket.on('connect', () => {
+      console.log('Connected to Socket.IO server:', socket.id);
+      socket.emit('joinChannel', '6804bfd371378add412da537');
+    });
+    socket.on('message', (message) => {
+      console.log('Received message:', message);
+    });
+    socket.on('error', (err) => {
+      console.error('Socket.IO error:', err);
+    });
+    socket.on('connect_error', (err) => {
+      console.error('Connection error:', err.message);
+    });
+  </script>
+</body>
+</html>

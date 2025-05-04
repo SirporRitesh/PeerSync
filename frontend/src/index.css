@@ -41,6 +41,25 @@ body {
   color: #333;
 }
 
+.sidebar ul li,
+.channel-list li {
+  padding: 0.5rem;
+  cursor: pointer;
+  border-radius: 4px;
+  transition: background-color 0.2s;
+}
+
+.sidebar ul li:hover,
+.channel-list li:hover {
+  background-color: #f0f0f0;
+}
+
+.sidebar ul li.active,
+.channel-list li.active {
+  background-color: #ddd;
+  font-weight: bold;
+}
+
 .channel-list {
   list-style: none;
   padding: 0;
@@ -79,6 +98,15 @@ body {
   background-color: #ffffff;
   padding: 10px;
   margin: 10px 0;
+  border-radius: 5px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.message {
+  display: block;
+  padding: 10px;
+  margin: 10px 0;
+  background-color: #ffffff;
   border-radius: 5px;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
 }

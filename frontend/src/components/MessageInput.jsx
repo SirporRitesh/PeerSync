@@ -10,23 +10,31 @@ const MessageInput = ({ channelId, onSendMessage }) => {
     if (!message.trim()) return;
 
     try {
-      // Send message to backend
+      const token = localStorage.getItem('token');
       const response = await axios.post(
         'http://localhost:5000/api/messages',
-        { channelId, content: message },
+        {
+          channelId,
+          content: message.trim(),
+          sender: JSON.parse(atob(token.split('.')[1])).userId,
+        },
         {
           headers: {
-            Authorization: `Bearer ${localStorage.getItem('token')}`,
+            Authorization: `Bearer ${token}`,
           },
         }
       );
 
       if (response.status === 201) {
-        onSendMessage(message); // Broadcast via Socket.IO
-        setMessage(''); // Clear input
+        console.log('Message sent:', response.data.message);
+        onSendMessage(response.data.message);
+        setMessage('');
       }
     } catch (err) {
       console.error('Error sending message:', err);
+      if (err.response?.status === 403) {
+        alert('You are not authorized to send messages in this channel.');
+      }
     }
   };
 
