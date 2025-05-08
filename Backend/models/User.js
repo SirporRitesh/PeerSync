@@ -1,58 +1,107 @@
 import mongoose from 'mongoose';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
+import Workspace from './Workspace.js'; // Import Workspace model
 
-// User schema
 const userSchema = new mongoose.Schema({
-  email: { type: String, required: true, unique: true },
+  firstName: { type: String, required: true, trim: true }, // New
+  lastName: { type: String, required: true, trim: true },  // New
+  username: { type: String, required: true, unique: true, trim: true, lowercase: true }, // New
+  email: { type: String, required: true, unique: true, trim: true, lowercase: true },
   password: { type: String, required: true },
-});
+}, { timestamps: true }); // Added timestamps
 
 // Static method for signup
-userSchema.statics.signup = async function (email, password) {
-  const existingUser = await this.findOne({ email });
-  if (existingUser) {
+userSchema.statics.signup = async function (userData) {
+  const { firstName, lastName, username, email, password, workspaceName } = userData;
+
+  // Validate required fields explicitly
+  if (!firstName || !lastName || !username || !email || !password || !workspaceName) {
+    throw new Error('All fields (firstName, lastName, username, email, password, workspaceName) are required.');
+  }
+
+  const existingUserByEmail = await this.findOne({ email });
+  if (existingUserByEmail) {
     throw new Error('Email already exists');
+  }
+  const existingUserByUsername = await this.findOne({ username });
+  if (existingUserByUsername) {
+    throw new Error('Username already taken');
   }
 
   const salt = await bcrypt.genSalt(10);
   const hashedPassword = await bcrypt.hash(password, salt);
 
-  const newUser = new this({ email, password: hashedPassword });
+  const newUser = new this({
+    firstName,
+    lastName,
+    username,
+    email,
+    password: hashedPassword,
+  });
   const savedUser = await newUser.save();
 
-  const token = jwt.sign({ userId: savedUser._id }, process.env.JWT_SECRET, {
-    expiresIn: '1h',
+  // --- Create Initial Workspace ---
+  const newWorkspace = new Workspace({
+    name: workspaceName,
+    description: `${firstName}'s initial workspace`, // Default description
+    createdBy: savedUser._id,
+    inviteCode: Math.random().toString(36).substring(2, 10).toUpperCase(), // Generate invite code
+    members: [{ userId: savedUser._id, role: 'Admin' }],
+    channels: [], // Start with no channels or create a default 'general' channel
   });
+  const savedWorkspace = await newWorkspace.save();
 
-  return { message: 'User created successfully', token };
+  const token = jwt.sign(
+    { userId: savedUser._id, username: savedUser.username }, // Add username to JWT
+    process.env.JWT_SECRET,
+    { expiresIn: '1h' }
+  );
+
+  return {
+    message: 'User and initial workspace created successfully',
+    token,
+    user: {
+      id: savedUser._id,
+      username: savedUser.username,
+      firstName: savedUser.firstName,
+      lastName: savedUser.lastName,
+      email: savedUser.email,
+    },
+  };
 };
 
 // Static method for login
 userSchema.statics.login = async function (email, password) {
-  // Normalize email to lowercase and trim whitespace
   const sanitizedEmail = email.trim().toLowerCase();
-
-  // Find the user by email
   const user = await this.findOne({ email: sanitizedEmail });
   if (!user) {
-    throw new Error('Invalid credentials'); // Throw error if user not found
+    throw new Error('Invalid credentials');
   }
 
-  // Validate the password
   const isMatch = await bcrypt.compare(password, user.password);
   if (!isMatch) {
-    throw new Error('Invalid credentials'); // Throw error if password is incorrect
+    throw new Error('Invalid credentials');
   }
 
-  // Generate a unique JWT token using the user's _id
-  const token = jwt.sign({ userId: user._id }, process.env.JWT_SECRET, {
-    expiresIn: '1h',
-  });
+  const token = jwt.sign(
+    { userId: user._id, username: user.username }, // Add username to JWT
+    process.env.JWT_SECRET,
+    { expiresIn: '1h' }
+  );
 
-  return { message: 'Login successful', token }; // Return success message and token
+  return {
+    message: 'Login successful',
+    token,
+    user: {
+      id: user._id,
+      username: user.username,
+      firstName: user.firstName,
+      lastName: user.lastName,
+      email: user.email,
+    },
+  };
 };
 
-const User = mongoose.model('User', userSchema, 'users');
-
+const User = mongoose.models.User || mongoose.model('User', userSchema);
 export default User;

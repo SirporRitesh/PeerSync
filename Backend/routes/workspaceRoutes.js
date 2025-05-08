@@ -2,7 +2,7 @@
 import express from 'express';
 import mongoose from 'mongoose';
 import User from '../models/User.js';
-import Workspace from '../models/Workspace.js';
+import Workspace from '../models/Workspace.js'; // Correct import
 import authenticateUser from '../middlewares/authenticateUser.js';
 
 const router = express.Router();
@@ -62,14 +62,17 @@ router.get('/:id', authenticateUser, async (req, res) => {
     return res.status(400).json({ message: 'Invalid workspace ID' });
   }
   try {
-
-    console.log('Fetching workspace with ID:', req.params.id); // Log workspace ID
     const workspace = await Workspace.findById(req.params.id)
-      .populate('channels')
-      .populate('members.userId', 'email');
+      .populate('channels') // Ensure this populates the channels
+      .populate('members.userId', 'username firstName lastName email _id'); // Populate more user fields
+
     if (!workspace) {
       return res.status(404).json({ message: 'Workspace not found' });
     }
+
+    // Log populated channels for debugging
+    console.log(`API GET /workspace/:id Sending workspace with channels: ${JSON.stringify(workspace.channels, null, 2)}`);
+
     res.status(200).json(workspace);
   } catch (err) {
     console.error('Error fetching workspace:', err);
