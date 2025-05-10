@@ -32,17 +32,40 @@ export const login = async (email, password) => {
 
 export const signup = async (userData) => {
   try {
-    const response = await apiClient.post('/auth/signup', {
+    // Prepare the payload based on signup action
+    const payload = {
       firstName: userData.firstName,
       lastName: userData.lastName,
       username: userData.username,
-      email: String(userData.email).trim(), // Ensure email is properly formatted
+      email: String(userData.email).trim().toLowerCase(),
       password: userData.password,
-      workspaceName: userData.workspaceName,
+    };
+
+    // Add workspace-specific data based on the action
+    if (userData.inviteCode) {
+      payload.inviteCode = userData.inviteCode.toUpperCase();
+      payload.action = 'join';
+    } else if (userData.workspaceName) {
+      payload.workspaceName = userData.workspaceName.trim();
+      payload.action = 'create';
+    }
+
+    console.log('Attempting signup with payload:', {
+      ...payload,
+      password: '[REDACTED]'
     });
-    return response.data; // { message: '...', token: '...', user: { ... } }
+
+    const response = await apiClient.post('/auth/signup', payload);
+    console.log('Signup success response:', response.data);
+    return response.data;
   } catch (error) {
-    throw error; // Rethrow error for handling in AuthContext
+    console.error('Signup API error:', {
+      status: error.response?.status,
+      statusText: error.response?.statusText,
+      data: error.response?.data,
+      headers: error.response?.headers
+    });
+    throw error;
   }
 };
 
@@ -83,6 +106,12 @@ export const fetchMessagesForChannel = async (channelId) => {
   return response.data; // Array of messages
 };
 
+export const joinWorkspace = async (inviteCode) => {
+  const response = await apiClient.post('/workspace/join', { inviteCode });
+  return response.data; // { message: 'Successfully joined workspace' }
+};
+
 // Add other API calls as needed (create workspace, create channel, invite user, etc.)
 
 export default apiClient; // Export the configured instance if needed elsewhere
+

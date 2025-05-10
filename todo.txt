@@ -1,0 +1,9 @@
+# COSMETIC CHANGES
+[] add sweet alert using "sweetalert2"
+[] mui snackbar
+[] hamburger menu on channels
+[] logout button on topbar/bottom of sidebar
+[]DM reposition
+
+# FUNCTIONAL
+[] Multi login / user -> chat

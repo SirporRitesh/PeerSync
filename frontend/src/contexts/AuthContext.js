@@ -1,6 +1,8 @@
 import React, { createContext, useState, useEffect, useContext } from 'react';
 import { jwtDecode as jwtDecode } from 'jwt-decode'; // Correct import for jwt-decode
 import * as api from '../services/api'; // Import API functions
+import Swal from 'sweetalert2';
+import { enqueueSnackbar } from 'notistack'; // Import MUI Snackbar
 
 const AuthContext = createContext(null);
 
@@ -57,6 +59,10 @@ export const AuthProvider = ({ children }) => {
       const errorMessage = err.response?.data?.message || 'Login failed. Please check credentials.';
       console.error('AuthContext: Login error -', errorMessage);
       setError(errorMessage);
+
+      // Show MUI Snackbar for invalid credentials
+      enqueueSnackbar(errorMessage, { variant: 'error' });
+
       localStorage.removeItem('token');
       localStorage.removeItem('userDetails');
       setToken(null);
@@ -69,31 +75,37 @@ export const AuthProvider = ({ children }) => {
   const signupUser = async (userData) => {
     setError(null);
     try {
-      console.log('Signup Payload Sent to API:', userData);
-
-      // Make sure email is a string before sending
-      const payload = {
-        ...userData,
-        email: String(userData.email).trim(), // Ensure email is a string and trim it
-      };
-
-      const data = await api.signup(payload);
-      console.log('Signup API Response:', data);
-
+      console.log('Starting signup process for:', userData.email);
+      
+      const data = await api.signup(userData);
+      
       if (data.token && data.user) {
         localStorage.setItem('token', data.token);
         localStorage.setItem('userDetails', JSON.stringify(data.user));
+        
+        // Store workspace details if available
+        if (data.workspace) {
+          localStorage.setItem('currentWorkspace', JSON.stringify(data.workspace));
+        }
+        
         setToken(data.token);
         setUser(data.user);
         setIsAuthenticated(true);
-        return true;
+        
+        // Navigate to the workspace if created
+        if (data.workspace) {
+          return { success: true, workspaceId: data.workspace.id };
+        }
+        return { success: true };
       }
+      
+      setError('Invalid response from server');
+      return { success: false };
     } catch (err) {
-      console.error('Signup API Error:', err);
-      const errorMessage =
-        err.response?.data?.message || err.message || 'Signup failed. Please try again.';
+      console.error('Detailed signup error:', err);
+      const errorMessage = err.response?.data?.message || 'Signup failed. Please try again.';
       setError(errorMessage);
-      return false;
+      return { success: false, error: errorMessage };
     }
   };
 

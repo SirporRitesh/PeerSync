@@ -9,9 +9,15 @@ import {
   Stack,
   CircularProgress,
   Alert,
+  RadioGroup,
+  FormControlLabel,
+  Radio,
+  FormLabel,
+  FormControl,
 } from '@mui/material';
 import { useNavigate, Link as RouterLink } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
+import * as api from '../services/api';
 
 export default function SignupPage() {
   const [firstName, setFirstName] = useState('');
@@ -21,47 +27,95 @@ export default function SignupPage() {
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [workspaceName, setWorkspaceName] = useState('');
+  const [inviteCode, setInviteCode] = useState('');
+  const [signupAction, setSignupAction] = useState('create');
   const [isSubmitting, setIsSubmitting] = useState(false); // Prevent duplicate submissions
+  const [localError, setLocalError] = useState(null);
   const { signupUser, isLoading, error, clearError } = useAuth();
   const navigate = useNavigate();
 
   useEffect(() => {
     clearError();
-  }, [clearError, firstName, lastName, username, email, password, confirmPassword, workspaceName]);
+    setLocalError(null);
+  }, [clearError, firstName, lastName, username, email, password, confirmPassword, workspaceName, inviteCode, signupAction]);
 
   const handleSignup = async (event) => {
     event.preventDefault();
-
-    if (isSubmitting) return; // Prevent duplicate submissions
-    setIsSubmitting(true);
+    if (isSubmitting) return;
 
     try {
-      // Validate required fields
-      if (!firstName || !lastName || !username || !email || !password || !workspaceName) {
-        alert('All fields are required!');
+      setIsSubmitting(true);
+      
+      // Basic validation
+      if (!firstName?.trim() || !lastName?.trim() || !username?.trim() || 
+          !email?.trim() || !password?.trim()) {
+        setLocalError('All fields are required');
         return;
       }
 
-      // Validate email format
-      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-        alert('Please enter a valid email address');
+      // Advanced email validation
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      const emailValue = email.trim().toLowerCase();
+      if (!emailRegex.test(emailValue)) {
+        setLocalError('Please enter a valid email address');
         return;
       }
 
+      // Password strength validation
+      if (password.length < 6) {
+        setLocalError('Password must be at least 6 characters');
+        return;
+      }
+
+      // Password match validation
       if (password !== confirmPassword) {
-        alert('Passwords do not match!');
+        setLocalError('Passwords do not match');
         return;
       }
 
-      const payload = { firstName, lastName, username, email, password, workspaceName };
-      console.log('Signup Payload:', payload);
+      // Base user data with sanitized inputs
+      const userData = {
+        firstName: firstName.trim(),
+        lastName: lastName.trim(),
+        username: username.trim().toLowerCase(),
+        email: emailValue,
+        password,
+        action: signupAction // Include the action type
+      };
 
-      const success = await signupUser(payload);
-      if (success) {
-        navigate('/login');
+      // Add workspace-specific data
+      if (signupAction === 'create') {
+        if (!workspaceName?.trim()) {
+          setLocalError('Workspace name is required when creating a new workspace');
+          return;
+        }
+        userData.workspaceName = workspaceName.trim();
+      } else if (signupAction === 'join') {
+        if (!inviteCode?.trim()) {
+          setLocalError('Invite code is required when joining a workspace');
+          return;
+        }
+        userData.inviteCode = inviteCode.trim().toUpperCase();
       }
+
+      console.log('Initiating signup with:', {
+        ...userData,
+        password: '[REDACTED]'
+      });
+      
+      const result = await signupUser(userData);
+      if (result.success) {
+        if (result.workspaceId) {
+          navigate(`/workspace/${result.workspaceId}`);
+        } else {
+          navigate('/login');
+        }
+      }
+    } catch (error) {
+      console.error('Signup submission error:', error);
+      setLocalError(error.response?.data?.message || 'An error occurred during signup');
     } finally {
-      setIsSubmitting(false); // Reset submitting state
+      setIsSubmitting(false);
     }
   };
 
@@ -79,9 +133,9 @@ export default function SignupPage() {
           Create Account
         </Typography>
 
-        {error && (
+        {(localError || error) && (
           <Alert severity="error" sx={{ width: '100%', mb: 2 }}>
-            {error}
+            {localError || error}
           </Alert>
         )}
 
@@ -160,18 +214,52 @@ export default function SignupPage() {
             onChange={(e) => setConfirmPassword(e.target.value)}
             disabled={isLoading || isSubmitting}
           />
-          <TextField
-            margin="normal"
-            required
-            fullWidth
-            name="workspaceName"
-            label="Enter Workspace Name"
-            id="workspaceName"
-            value={workspaceName}
-            onChange={(e) => setWorkspaceName(e.target.value)}
-            disabled={isLoading || isSubmitting}
-            sx={{ mb: 2 }}
-          />
+
+          <FormControl component="fieldset" sx={{ mt: 2, mb: 1, width: '100%' }}>
+            <FormLabel component="legend">Workspace Action</FormLabel>
+            <RadioGroup
+              row
+              aria-label="workspace-action"
+              name="workspace-action-group"
+              value={signupAction}
+              onChange={(e) => setSignupAction(e.target.value)}
+            >
+              <FormControlLabel value="create" control={<Radio />} label="Create Workspace" />
+              <FormControlLabel value="join" control={<Radio />} label="Join Workspace" />
+            </RadioGroup>
+          </FormControl>
+
+          {signupAction === 'create' && (
+            <TextField
+              margin="normal"
+              required
+              fullWidth
+              name="workspaceName"
+              label="Enter Workspace Name"
+              id="workspaceName"
+              value={workspaceName}
+              onChange={(e) => setWorkspaceName(e.target.value)}
+              disabled={isLoading || isSubmitting}
+              sx={{ mb: 2 }}
+            />
+          )}
+
+          {signupAction === 'join' && (
+            <TextField
+              margin="normal"
+              required
+              fullWidth
+              name="inviteCode"
+              label="Enter Invite Code"
+              id="inviteCode"
+              value={inviteCode}
+              onChange={(e) => setInviteCode(e.target.value)}
+              disabled={isLoading || isSubmitting}
+              sx={{ mb: 2 }}
+              helperText="Case-insensitive, e.g., LIX8X9OV"
+            />
+          )}
+
           <Button
             type="submit"
             fullWidth

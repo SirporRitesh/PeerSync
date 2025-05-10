@@ -8,9 +8,7 @@ const router = express.Router();
 // Signup route
 router.post('/signup', async (req, res) => {
   try {
-    // Destructure all required fields from req.body
-    const { firstName, lastName, username, email, password, workspaceName } = req.body;
-    const result = await User.signup({ firstName, lastName, username, email, password, workspaceName });
+    const result = await User.signup(req.body);
     res.status(201).json(result);
   } catch (err) {
     console.error('Signup error:', err.message, err.stack);

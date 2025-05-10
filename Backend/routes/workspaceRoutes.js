@@ -129,23 +129,24 @@ router.post('/invite', authenticateUser, async (req, res) => {
 // Join workspace
 router.post('/join', authenticateUser, async (req, res) => {
   const { inviteCode } = req.body;
-
   try {
     const userId = req.user._id;
-    const workspace = await Workspace.findOne({ inviteCode });
+    const workspace = await Workspace.findOne({ inviteCode: inviteCode.toUpperCase() });
 
     if (!workspace) {
       return res.status(400).json({ message: 'Invalid invite code or workspace not found' });
     }
-
-    if (workspace.members.some(member => member.userId.toString() === userId.toString())) {
+    if (workspace.members.some(member => member.userId.equals(userId))) {
       return res.status(400).json({ message: 'You are already a member of this workspace' });
     }
 
     workspace.members.push({ userId, role: 'Member' });
     await workspace.save();
 
-    res.status(200).json({ message: 'Successfully joined workspace' });
+    const populatedWorkspace = await Workspace.findById(workspace._id)
+                                        .populate('channels')
+                                        .populate('members.userId', 'username _id');
+    res.status(200).json({ message: 'Successfully joined workspace', workspace: populatedWorkspace });
   } catch (err) {
     console.error('Error joining workspace:', err);
     res.status(500).json({ message: 'Server error' });
